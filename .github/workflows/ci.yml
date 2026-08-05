@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Build, test & lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile=false
+
+      - name: Lint
+        run: corepack pnpm run lint
+
+      - name: Typecheck
+        run: corepack pnpm run typecheck
+
+      - name: Unit / component tests
+        run: corepack pnpm run test
+
+      - name: Build
+        run: corepack pnpm run build
+
+      - name: Verify PWA artifacts
+        run: |
+          test -f dist/manifest.webmanifest
+          test -f dist/registerSW.js
+          grep -q "serviceWorker" dist/sw.js
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
