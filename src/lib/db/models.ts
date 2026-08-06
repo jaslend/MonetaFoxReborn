@@ -63,6 +63,11 @@ export type Account = {
   /** ISO 4217 code (e.g. 'GBP'); investments may hold multiple assets. */
   currency: string;
   archived?: boolean;
+  /**
+   * Opening balance in the account's OWN currency, added to the sum of signed
+   * transaction amounts to give the account balance. Defaults to 0 when unset.
+   */
+  openingBalance?: number;
   /** ISO-8601 creation timestamp. */
   createdAt?: string;
 };
@@ -156,4 +161,11 @@ export type Settings = {
   id: string;
   baseCurrency: string;
   encryptionMode: EncryptionMode;
+  /**
+   * Manual FX rates: `rates[currency] = <base-currency units> per 1 unit of
+   * <currency>`. The base currency itself is NOT stored here — converting it
+   * to itself is the identity. A missing entry for a foreign currency means
+   * "rate unknown" and `convertToBase` will throw rather than guess.
+   */
+  rates?: Record<string, number>;
 };
