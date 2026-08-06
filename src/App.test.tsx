@@ -1,38 +1,77 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import App from '@/App';
+import { MemoryRouter } from 'react-router-dom';
+import { AppRoutes } from '@/routes';
+import { useAuthStore } from '@/stores';
 
-describe('<App />', () => {
-  it('renders the heading and welcome banner', () => {
-    render(<App />);
-    expect(
-      screen.getByRole('heading', { name: /MonetaFox Reborn/i, level: 1 }),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('welcome-banner')).toBeInTheDocument();
+/**
+ * Shell contract tests for Phase 3b. These do NOT exercise the Phase 0 demo
+ * counter (deleted); they pin the protected-route seam: unauthenticated users
+ * see Login, authenticated users see the Layout + the routed section page.
+ */
+describe('AppRoutes shell', () => {
+  beforeEach(() => {
+    useAuthStore.setState({ isAuthenticated: false });
   });
 
-  it('increments the counter via the Zustand-backed Button', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    const countButton = screen.getByRole('button', { name: /Count: 0/i });
-    await user.click(countButton);
-    await user.click(countButton);
+  it('shows the Login page (with "Sign in") when unauthenticated at /', () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
 
     expect(
-      screen.getByRole('button', { name: /Count: 2/i }),
+      screen.getByRole('button', { name: /sign in/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/welcome back to monetafox/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: /Dashboard/i, level: 1 }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders the Dashboard and nav when authenticated at /', () => {
+    useAuthStore.setState({ isAuthenticated: true });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: /Dashboard/i, level: 1 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Transactions' }),
     ).toBeInTheDocument();
   });
 
-  it('toggles the welcome banner with the outline Button', async () => {
+  it('dev Sign in button authenticates and shows the Dashboard', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
 
-    expect(screen.getByTestId('welcome-banner')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Hide welcome/i }));
-    expect(screen.queryByTestId('welcome-banner')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Show welcome/i }));
-    expect(screen.getByTestId('welcome-banner')).toBeInTheDocument();
+    await user.click(screen.getByTestId('dev-sign-in'));
+
+    expect(
+      screen.getByRole('heading', { name: /Dashboard/i, level: 1 }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders NotFound for an unknown path', () => {
+    render(
+      <MemoryRouter initialEntries={['/nope']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: /Not Found/i, level: 1 }),
+    ).toBeInTheDocument();
   });
 });

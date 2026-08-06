@@ -25,6 +25,7 @@
     "dexie": "^4.0.10",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-router-dom": "^7.18.2",
     "recharts": "^2.15.3",
     "tailwind-merge": "^3.0.2",
     "zustand": "^5.0.3"

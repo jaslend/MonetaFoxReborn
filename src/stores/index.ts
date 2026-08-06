@@ -26,6 +26,8 @@ export { useCategoryStore } from './categoryStore';
 export { useBudgetStore } from './budgetStore';
 export { useSettingsStore } from './settingsStore';
 export { useUiStore } from './uiStore';
+export { useAuthStore } from './authStore';
+export type { AuthState } from './authStore';
 export type { Theme, ModalState, UiState } from './uiStore';
 
 /** Bind every domain store to its repository and load initial data. */
