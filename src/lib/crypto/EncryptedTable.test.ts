@@ -1,6 +1,5 @@
 // @vitest-environment node
 
-import './globalPolyfill';
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import Dexie from 'dexie';

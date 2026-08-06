@@ -6,8 +6,6 @@
  * is wrong or the payload has been tampered with (AES-GCM authenticated).
  */
 
-import './globalPolyfill';
-
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 

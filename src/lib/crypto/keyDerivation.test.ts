@@ -1,6 +1,5 @@
 // @vitest-environment node
 
-import './globalPolyfill';
 import { describe, it, expect } from 'vitest';
 import { deriveKey, PBKDF2_ITERATIONS, type KeyInput } from './keyDerivation';
 import { encrypt, decrypt } from './CryptoStore';

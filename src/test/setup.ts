@@ -22,6 +22,13 @@ beforeAll(() => {
 
 afterEach(() => {
   cleanup();
-  localStorage.removeItem('monetafox-theme');
-  document.documentElement.classList.remove('dark');
+  // These globals are absent under @vitest-environment node (the crypto and
+  // data-layer suites), so guard them — mirroring the matchMedia guard above —
+  // to keep node-env tests from crashing on teardown.
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('monetafox-theme');
+  }
+  if (typeof document !== 'undefined') {
+    document.documentElement.classList.remove('dark');
+  }
 });
