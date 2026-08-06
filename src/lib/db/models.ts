@@ -55,6 +55,23 @@ export type Split = {
   notes?: string;
 };
 
+/**
+ * Phase 5a split leg. A transaction's `splits` allocate the PARENT `amount`
+ * across categories and MUST sum to it (see `src/lib/transactions/isSplitBalanced`).
+ *
+ * Sign convention (pinned by the Phase 5a contract): `Transaction.amount` is
+ * SIGNED, so each split's `amount` carries the SAME sign as the parent (outflow
+ * splits are negative, inflow splits are positive). Account balance is driven
+ * by the parent amount only — splits never affect the balance, they only
+ * distribute the parent across categories for reporting. A transaction with no
+ * `splits` is trivially balanced.
+ */
+export type TransactionSplit = {
+  categoryId?: string;
+  amount: number;
+  notes?: string;
+};
+
 /** A financial account. */
 export type Account = {
   id: string;
@@ -87,8 +104,13 @@ export type Transaction = {
   tags?: string[];
   cleared?: boolean;
   reconciled?: boolean;
-  /** Present only for split transactions. */
-  splits?: Split[];
+  /**
+   * Optional split allocation of `amount` across categories. Each split's
+   * `amount` is SIGNED with the same sign as `amount` and the split amounts
+   * MUST sum to `amount` (see `src/lib/transactions`). Balance uses the PARENT
+   * `amount` only; splits are never double-counted.
+   */
+  splits?: TransactionSplit[];
   type?: TransactionType;
 };
 
