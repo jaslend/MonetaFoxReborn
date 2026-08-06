@@ -37,6 +37,7 @@ import type { TransactionTemplate } from '@/lib/db/models';
 import { formatCurrency } from '@/lib/currency';
 
 import { useAccountStore } from '@/stores/accountStore';
+import { useAuthStore } from '@/stores/authStore';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import {
@@ -45,6 +46,7 @@ import {
 } from '@/stores/transactionStore';
 
 import { ConfirmDialog } from '@/components/accounts/ConfirmDialog';
+import { ImportWizard } from '@/components/import/ImportWizard';
 import {
   TransactionForm,
   type TransactionFormValues,
@@ -63,8 +65,14 @@ function todayISO(): string {
 export function TransactionsPage() {
   const accounts = useAccountStore((s) => s.items);
   const categories = useCategoryStore((s) => s.items);
+  const allTransactions = useTransactionStore((s) => s.items);
   const visible = useTransactionStore(useShallow(selectFilteredTransactions));
   const settings = useSettingsStore((s) => s.items[0]);
+  const repositories = useAuthStore((s) => s.repositories);
+
+  const loadAccounts = useAccountStore((s) => s.load);
+  const loadCategories = useCategoryStore((s) => s.load);
+  const loadTransactions = useTransactionStore((s) => s.load);
 
   const addTx = useTransactionStore((s) => s.add);
   const updateTx = useTransactionStore((s) => s.update);
@@ -76,6 +84,11 @@ export function TransactionsPage() {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [prefill, setPrefill] = useState<Transaction | undefined>(undefined);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+
+  const refreshAfterImport = async () => {
+    await Promise.all([loadAccounts(), loadCategories(), loadTransactions()]);
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -178,9 +191,18 @@ export function TransactionsPage() {
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Transactions</h1>
-        <Button onClick={openCreate} data-testid="add-transaction">
-          Add transaction
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            data-testid="import-button"
+          >
+            Import
+          </Button>
+          <Button onClick={openCreate} data-testid="add-transaction">
+            Add transaction
+          </Button>
+        </div>
       </div>
 
       <TemplatePicker
@@ -247,6 +269,16 @@ export function TransactionsPage() {
         confirmLabel="Delete"
         onConfirm={handleDelete}
         onCancel={() => setDeleting(null)}
+      />
+
+      <ImportWizard
+        open={importOpen}
+        repositories={repositories}
+        baseCurrency={settings?.baseCurrency ?? ''}
+        accounts={accounts}
+        transactions={allTransactions}
+        onImported={refreshAfterImport}
+        onClose={() => setImportOpen(false)}
       />
     </div>
   );
