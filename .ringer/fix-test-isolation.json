@@ -1,0 +1,18 @@
+{
+  "run_name": "monetafox-reborn-build",
+  "workdir": "/home/user/Source/MonetaFoxReborn/.ringer/work",
+  "max_parallel": 1,
+  "tasks": [
+    {
+      "key": "fix-test-isolation",
+      "engine": "opencode",
+      "model": "openrouter/z-ai/glm-5.2",
+      "task_type": "code-fix",
+      "timeout_s": 2400,
+      "expect_files": ["notes.md"],
+      "spec": "You are a code-fix worker making the MonetaFox Reborn test suite DETERMINISTIC. The repo is at /home/user/Source/MonetaFoxReborn (the REPO). The Vitest suite is FLAKY: run `corepack pnpm run test` several times and you will see 1-3 intermittent failures (e.g. in src/pages/TransactionsPage.test.tsx), then occasionally a fully green run.\n\nROOT CAUSE (confirmed): tests use fake-indexeddb, but the global IndexedDB is shared across test files within a Vitest worker and is NEVER reset. Multiple suites open the same default-named databases (MonetaFoxDB 'monetafox', the auth DB), so rows written by one test leak into another and assertions like `expect(items[0].amount).toBe(-100)` see stale/extra data depending on execution order.\n\nTASK: make every test start from a clean IndexedDB so results are independent of order. The clean systemic fix is to reset fake-indexeddb before each test in the shared setup: in src/test/setup.ts, install a fresh `IDBFactory` from 'fake-indexeddb' on the global before each test (e.g. `import { IDBFactory } from 'fake-indexeddb'; beforeEach(() => { (globalThis as any).indexedDB = new IDBFactory(); });`). Ensure this is compatible with both the jsdom and node test environments and with files that already `import 'fake-indexeddb/auto'`. If any individual test relied on cross-test state (it should not), adjust that TEST file to set up its own data. You may also close Dexie DB instances between tests where a file opens them, if needed for stability.\n\nBOUNDARY / OWNERSHIP: You OWN only TEST INFRASTRUCTURE and TEST FILES: src/test/** and any *.test.ts / *.test.tsx files. You must NOT change any production (non-test) source or alter application behavior, and you must NOT delete or weaken assertions to hide flakiness — the point is real isolation. Do NOT touch .ringer/ or the .md files. Do NOT git commit or push. Do NOT add dependencies (fake-indexeddb is already installed).\n\nVERIFY before finishing (from REPO root): run `corepack pnpm run test` AT LEAST 8 TIMES IN A ROW — every run must be fully green with the same passing count (>= 125). Then `corepack pnpm run typecheck`, `corepack pnpm run lint`, `corepack pnpm run build` — all exit 0.\n\nOUTPUT CONTRACT: make the fix, then write ./notes.md in your task dir: the exact isolation mechanism you added, why it fixes the leak, how many consecutive green runs you observed, and any test files you had to adjust and why.\n\nHARD RULES: test-only changes; never weaken or delete assertions; do not reduce the test count; do not change production behavior; do not touch files outside ownership; do not commit.",
+      "check": "python3 '/home/user/Source/MonetaFoxReborn/.ringer/checks/check_test_determinism.py' --target '/home/user/Source/MonetaFoxReborn'",
+      "verified": "The full Vitest suite runs green 8 times in a row with no order-dependent failures and the passing-test count stays at or above 125 (assertions not deleted); typecheck + lint + build exit 0. Only test infrastructure / test files changed; no production behavior altered; nothing committed."
+    }
+  ]
+}

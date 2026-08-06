@@ -34,10 +34,17 @@ describe('EncryptedTable', () => {
     const storedKeys = Object.keys(raw as Record<string, unknown>);
     expect(storedKeys).toContain('_enc');
     expect(storedKeys).toContain('id');
-    // No plaintext record value should leak.
+    // No plaintext record value should leak. "SecretPayee" is long enough
+    // that it cannot appear by chance in base64 ciphertext, so the string
+    // check is a sound leak detector. The numeric amount "42", however, is
+    // a short substring that random base64 ciphertext can contain by
+    // coincidence (the encryption is sound — this is a false positive), so
+    // verify the amount is not stored as a plaintext field value instead of
+    // grepping the ciphertext string.
     const blob = JSON.stringify(raw);
     expect(blob).not.toContain('SecretPayee');
-    expect(blob).not.toContain('42');
+    expect((raw as Record<string, unknown>).amount).toBeUndefined();
+    expect((raw as Record<string, unknown>).title).toBeUndefined();
     // id is the primary key and may be plaintext; the rest must not.
     expect(storedKeys.filter((k) => k !== '_enc' && k !== 'id')).toEqual([]);
   });
