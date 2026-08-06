@@ -28,6 +28,7 @@ import type {
   Holding,
   PricePoint,
   Settings,
+  TransactionTemplate,
 } from './models';
 
 export class MonetaFoxDB extends Dexie {
@@ -40,9 +41,12 @@ export class MonetaFoxDB extends Dexie {
   holdings!: Dexie.Table<Holding, string>;
   prices!: Dexie.Table<PricePoint, string>;
   settings!: Dexie.Table<Settings, string>;
+  transactionTemplates!: Dexie.Table<TransactionTemplate, string>;
 
   constructor(name = 'monetafox') {
     super(name);
+    // Phase 1 schema (v1): every table keyed only by `&id`; no plaintext
+    // secondary indexes. Never mutate a shipped version — only append.
     this.version(1).stores({
       // Every table is keyed only by `id`; no plaintext secondary indexes.
       accounts: '&id',
@@ -54,6 +58,17 @@ export class MonetaFoxDB extends Dexie {
       holdings: '&id',
       prices: '&id',
       settings: '&id',
+    });
+
+    // Phase 5b schema (v2): additive migration that adds the
+    // `transactionTemplates` table for quick-entry templates. Only the DELTA
+    // is declared — Dexie leaves every v1 table untouched when it is not
+    // listed here, so existing data and indexes are preserved verbatim. To
+    // delete a table in a future version, list it as `null`; to add another,
+    // append a new `this.version(N).stores({ ...delta })` block chained after
+    // this one. Versions must be declared in ascending order with no gaps.
+    this.version(2).stores({
+      transactionTemplates: '&id',
     });
   }
 }

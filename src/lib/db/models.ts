@@ -122,6 +122,36 @@ export type Category = {
   kind: 'income' | 'expense';
 };
 
+/**
+ * A quick-entry transaction template (Phase 5b, per spec §"Transactions":
+ * "Supports transaction templates for quick entry").
+ *
+ * Every field except `id` and `name` is optional — a template is just a
+ * partially-filled transaction the user can materialise in one click. The
+ * stored fields mirror `Transaction` so applying a template pre-fills the
+ * entry form; `splits` carries the same signed-split convention as
+ * `Transaction.splits` (each line's `amount` is SIGNED and the lines must sum
+ * to `amount`).
+ *
+ * Declared as a `type` alias (not `interface`) for the same reason every other
+ * model here is: `EncryptedTable<T extends Record<string, unknown>>` requires
+ * `T` to carry an implicit string index signature, which TypeScript only
+ * synthesises for object-literal type aliases — an `interface` would fail the
+ * constraint and break `EncryptedTable<TransactionTemplate>`.
+ */
+export type TransactionTemplate = {
+  id: string;
+  name: string;
+  accountId?: string;
+  payee?: string;
+  amount?: number;
+  currency?: string;
+  categoryId?: string;
+  notes?: string;
+  tags?: string[];
+  splits?: TransactionSplit[];
+};
+
 /** A monthly per-category spending limit, per spec §"Transactions". */
 export type Budget = {
   id: string;

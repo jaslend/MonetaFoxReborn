@@ -1,5 +1,5 @@
 /**
- * Transactions page — Phase 5a.
+ * Transactions page — Phase 5a + 5b.
  *
  * Real transactions view:
  * - list/table of transactions (date, payee, category, amount, Cleared /
@@ -12,24 +12,37 @@
  * - inline reconciliation toggles (Cleared / Reconciled);
  * - delete with confirm.
  *
- * Filters, search, and templates are Phase 5b and are NOT built here.
+ * Phase 5b additions:
+ * - a filter bar (date range, account, category, payee, cleared/reconciled)
+ *   and a search box that drive the visible list via the store's pure
+ *   `filterTransactions` / `searchTransactions` (composed in
+ *   `selectFilteredTransactions`);
+ * - template quick-entry: a picker to start a new entry from a saved template
+ *   (prefills the create-mode form), and "Save as template" for the
+ *   transaction currently being edited.
  *
- * Reuses the encrypted transaction store (with split validation), the account
- * store (for the account picker + currency), the category store (for the
- * category pickers), and the generic confirm dialog. No direct DB access.
+ * Reuses the encrypted transaction store (with split validation + templates),
+ * the account store (for the account picker + currency), the category store
+ * (for the category pickers), and the generic confirm dialog. No direct DB
+ * access.
  */
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
 import type { Transaction } from '@/lib/db';
+import type { TransactionTemplate } from '@/lib/db/models';
 import { formatCurrency } from '@/lib/currency';
 
 import { useAccountStore } from '@/stores/accountStore';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { useTransactionStore } from '@/stores/transactionStore';
+import {
+  useTransactionStore,
+  selectFilteredTransactions,
+} from '@/stores/transactionStore';
 
 import { ConfirmDialog } from '@/components/accounts/ConfirmDialog';
 import {
@@ -37,11 +50,20 @@ import {
   type TransactionFormValues,
 } from '@/components/transactions/TransactionForm';
 import { TransactionList } from '@/components/transactions/TransactionList';
+import { TransactionFilters } from '@/components/transactions/TransactionFilters';
+import { TemplatePicker } from '@/components/transactions/TemplatePicker';
+
+function todayISO(): string {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
 
 export function TransactionsPage() {
   const accounts = useAccountStore((s) => s.items);
   const categories = useCategoryStore((s) => s.items);
-  const transactions = useTransactionStore((s) => s.items);
+  const visible = useTransactionStore(useShallow(selectFilteredTransactions));
   const settings = useSettingsStore((s) => s.items[0]);
 
   const addTx = useTransactionStore((s) => s.add);
@@ -52,14 +74,38 @@ export function TransactionsPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
+  const [prefill, setPrefill] = useState<Transaction | undefined>(undefined);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
 
   const openCreate = () => {
     setEditing(null);
+    setPrefill(undefined);
     setFormOpen(true);
   };
   const openEdit = (tx: Transaction) => {
     setEditing(tx);
+    setPrefill(undefined);
+    setFormOpen(true);
+  };
+
+  const handleApplyTemplate = (tpl: TransactionTemplate) => {
+    // Build a Transaction-shaped prefill so the form can seed from it while
+    // staying in create mode (no `initial`). Today's date fills in for the
+    // template's dateless shape.
+    const pre: Transaction = {
+      id: `template-${tpl.id}`,
+      accountId: tpl.accountId ?? '',
+      date: todayISO(),
+      amount: tpl.amount ?? 0,
+      currency: tpl.currency ?? '',
+      payee: tpl.payee ?? '',
+      categoryId: tpl.categoryId,
+      notes: tpl.notes,
+      tags: tpl.tags,
+      splits: tpl.splits,
+    };
+    setEditing(null);
+    setPrefill(pre);
     setFormOpen(true);
   };
 
@@ -96,6 +142,7 @@ export function TransactionsPage() {
     }
     setFormOpen(false);
     setEditing(null);
+    setPrefill(undefined);
   };
 
   const handleDelete = async () => {
@@ -111,13 +158,13 @@ export function TransactionsPage() {
 
   const baseCurrency = settings?.baseCurrency ?? '';
 
-  // A small summary in the base currency, when set. Errors (missing FX rate)
-  // are swallowed here so the page never crashes; the Accounts page surfaces
-  // the missing-rate warning.
+  // A small summary in the base currency over the VISIBLE (filtered) set, when
+  // a base currency is set. Errors (missing FX rate) are swallowed here so the
+  // page never crashes; the Accounts page surfaces the missing-rate warning.
   const summary = (() => {
     if (!baseCurrency) return null;
     let net = 0;
-    for (const t of transactions) {
+    for (const t of visible) {
       if (t.currency === baseCurrency) net += t.amount;
       else {
         const r = settings?.rates?.[t.currency];
@@ -135,6 +182,11 @@ export function TransactionsPage() {
           Add transaction
         </Button>
       </div>
+
+      <TemplatePicker
+        from={editing ?? undefined}
+        onApply={handleApplyTemplate}
+      />
 
       {summary !== null ? (
         <Card>
@@ -159,9 +211,10 @@ export function TransactionsPage() {
         </Card>
       ) : (
         <Card>
-          <CardContent className="py-4">
+          <CardContent className="flex flex-col gap-4 py-4">
+            <TransactionFilters accounts={accounts} categories={categories} />
             <TransactionList
-              transactions={transactions}
+              transactions={visible}
               accounts={accounts}
               categories={categories}
               onEdit={openEdit}
@@ -178,10 +231,12 @@ export function TransactionsPage() {
         accounts={accounts}
         categories={categories}
         initial={editing ?? undefined}
+        prefill={prefill}
         onSubmit={handleSubmit}
         onCancel={() => {
           setFormOpen(false);
           setEditing(null);
+          setPrefill(undefined);
         }}
       />
 

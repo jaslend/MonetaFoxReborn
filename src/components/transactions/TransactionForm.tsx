@@ -50,6 +50,13 @@ interface TransactionFormProps {
   categories: Category[];
   /** Existing transaction to edit, or undefined for create. */
   initial?: Transaction;
+  /**
+   * A partially-filled transaction to seed CREATE mode (Phase 5b template
+   * quick-entry). Used only when `initial` is unset; the form stays in create
+   * mode (no `id`), so submit adds a new transaction. Ignored once the user
+   * starts editing.
+   */
+  prefill?: Transaction;
   onSubmit: (values: TransactionFormValues) => Promise<void> | void;
   onCancel: () => void;
 }
@@ -100,6 +107,7 @@ export function TransactionForm({
   accounts,
   categories,
   initial,
+  prefill,
   onSubmit,
   onCancel,
 }: TransactionFormProps) {
@@ -132,6 +140,19 @@ export function TransactionForm({
       setNotes(v.notes);
       setTags(v.tags);
       setSplits(v.splits);
+    } else if (prefill) {
+      // Template quick-entry: seed from the prefilled transaction but stay in
+      // create mode (no id) so submit adds a new row.
+      const v = fromTransaction(prefill);
+      setAccountId(v.accountId || firstAccount);
+      setDate(v.date || todayISO());
+      setPayee(v.payee);
+      setDirection(v.direction);
+      setAmount(v.amount);
+      setCategoryId(v.categoryId);
+      setNotes(v.notes);
+      setTags(v.tags);
+      setSplits(v.splits);
     } else {
       setAccountId(firstAccount);
       setDate(todayISO());
@@ -144,7 +165,7 @@ export function TransactionForm({
       setSplits([]);
     }
     setError(null);
-  }, [open, initial, firstAccount]);
+  }, [open, initial, prefill, firstAccount]);
 
   const accountCurrency = useMemo(() => {
     return (

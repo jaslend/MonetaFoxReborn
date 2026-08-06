@@ -20,6 +20,7 @@ import type {
   Holding,
   PricePoint,
   Settings,
+  TransactionTemplate,
 } from './models';
 
 /** One encrypted repository per entity. */
@@ -33,6 +34,7 @@ export type Repositories = {
   holdings: EncryptedTable<Holding>;
   prices: EncryptedTable<PricePoint>;
   settings: EncryptedTable<Settings>;
+  transactionTemplates: EncryptedTable<TransactionTemplate>;
 };
 
 /**
@@ -57,5 +59,9 @@ export function createRepositories(
     holdings: new EncryptedTable<Holding>(db.holdings, key),
     prices: new EncryptedTable<PricePoint>(db.prices, key),
     settings: new EncryptedTable<Settings>(db.settings, key),
+    transactionTemplates: new EncryptedTable<TransactionTemplate>(
+      db.transactionTemplates,
+      key,
+    ),
   };
 }

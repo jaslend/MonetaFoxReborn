@@ -1,17 +1,30 @@
 // @vitest-environment node
 
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 
 import { deriveKey } from '@/lib/crypto';
 import { MonetaFoxDB, createRepositories, type Repositories } from '@/lib/db';
 
-import { useTransactionStore, SplitUnbalancedError } from './transactionStore';
+import {
+  useTransactionStore,
+  SplitUnbalancedError,
+  selectFilteredTransactions as selectFiltered,
+} from './transactionStore';
 import { useAccountStore, initializeStores, resetStores } from './index';
 
 function uuid(): string {
   return crypto.randomUUID();
 }
+
+// The AES key is a pure function of (passphrase, salt) and holds no state, so
+// derive it ONCE per file (PBKDF2 is the suite's slowest single op) and reuse
+// it across tests. Per-test isolation comes from the fresh DB below — the same
+// key encrypting different databases is exactly what production does.
+let key: CryptoKey;
+beforeAll(async () => {
+  key = await deriveKey({ mode: 'advanced', passphrase: 'pp', salt: 's' });
+});
 
 let db: MonetaFoxDB;
 let repos: Repositories;
@@ -19,11 +32,6 @@ let accId: string;
 
 beforeEach(async () => {
   db = new MonetaFoxDB('test-tx-store-' + Math.random().toString(36).slice(2));
-  const key = await deriveKey({
-    mode: 'advanced',
-    passphrase: 'pp',
-    salt: 's',
-  });
   repos = createRepositories(db, key);
   resetStores();
   await initializeStores(repos);
@@ -175,5 +183,166 @@ describe('useTransactionStore (Phase 5a)', () => {
     await expect(useTransactionStore.getState().add(baseTx())).rejects.toThrow(
       /not initialized/,
     );
+  });
+});
+
+describe('useTransactionStore (Phase 5b: filters + search)', () => {
+  it('default filter/search expose every item via selectFilteredTransactions', async () => {
+    await useTransactionStore.getState().add(baseTx(-100));
+    await useTransactionStore
+      .getState()
+      .add({ ...baseTx(50), accountId: accId });
+    const state = useTransactionStore.getState();
+    expect(state.filter).toEqual({});
+    expect(state.search).toBe('');
+    expect(
+      selectFiltered(state)
+        .map((t) => t.amount)
+        .sort(),
+    ).toEqual([-100, 50]);
+  });
+
+  it('setFilter merges a patch and narrows the derived list', async () => {
+    const t1 = baseTx(-100); // a1, 2026-01-15
+    const t2 = { ...baseTx(50), date: '2026-03-20' };
+    await useTransactionStore.getState().add(t1);
+    await useTransactionStore.getState().add(t2);
+    useTransactionStore.getState().setFilter({ dateFrom: '2026-03-01' });
+    expect(
+      selectFiltered(useTransactionStore.getState()).map((t) => t.id),
+    ).toEqual([t2.id]);
+    // merging: add an account filter that excludes everything
+    useTransactionStore.getState().setFilter({ accountId: 'no-such-account' });
+    expect(selectFiltered(useTransactionStore.getState())).toEqual([]);
+  });
+
+  it('clearFilter resets filter and search', async () => {
+    await useTransactionStore.getState().add(baseTx());
+    useTransactionStore.getState().setFilter({ cleared: true });
+    useTransactionStore.getState().setSearch('xyz');
+    useTransactionStore.getState().clearFilter();
+    const s = useTransactionStore.getState();
+    expect(s.filter).toEqual({});
+    expect(s.search).toBe('');
+    expect(selectFiltered(s)).toHaveLength(1);
+  });
+
+  it('setSearch narrows by payee/notes/tags', async () => {
+    await useTransactionStore.getState().add({ ...baseTx(), payee: 'Tesco' });
+    await useTransactionStore
+      .getState()
+      .add({ ...baseTx(), payee: 'Amazon', notes: 'books' });
+    useTransactionStore.getState().setSearch('tesc');
+    expect(
+      selectFiltered(useTransactionStore.getState()).map((t) => t.payee),
+    ).toEqual(['Tesco']);
+    useTransactionStore.getState().setSearch('books');
+    expect(
+      selectFiltered(useTransactionStore.getState()).map((t) => t.payee),
+    ).toEqual(['Amazon']);
+  });
+
+  it('filter + search compose (search first, then filter)', async () => {
+    await useTransactionStore
+      .getState()
+      .add({ ...baseTx(-30), payee: 'Tesco' });
+    await useTransactionStore
+      .getState()
+      .add({ ...baseTx(-10), payee: 'Tesco Express' });
+    useTransactionStore.getState().setSearch('tesco');
+    useTransactionStore.getState().setFilter({ accountId: accId });
+    expect(selectFiltered(useTransactionStore.getState())).toHaveLength(2);
+    useTransactionStore.getState().setFilter({ accountId: 'other' });
+    expect(selectFiltered(useTransactionStore.getState())).toEqual([]);
+  });
+});
+
+describe('useTransactionStore (Phase 5b: templates)', () => {
+  it('saveAsTemplate persists a template derived from a transaction', async () => {
+    const t = {
+      ...baseTx(-100),
+      payee: 'Landlord',
+      categoryId: 'c',
+      tags: ['rent'],
+    };
+    await useTransactionStore.getState().add(t);
+    const saved = await useTransactionStore
+      .getState()
+      .saveAsTemplate(t, 'Rent');
+    expect(saved.name).toBe('Rent');
+    expect(saved.payee).toBe('Landlord');
+    expect(saved.amount).toBe(-100);
+    expect(saved.tags).toEqual(['rent']);
+    expect(useTransactionStore.getState().templates.map((x) => x.name)).toEqual(
+      ['Rent'],
+    );
+    expect((await repos.transactionTemplates.get(saved.id))?.payee).toBe(
+      'Landlord',
+    );
+  });
+
+  it('saveAsTemplate defaults the name to the payee', async () => {
+    const t = { ...baseTx(-100), payee: 'Cafe' };
+    await useTransactionStore.getState().add(t);
+    const saved = await useTransactionStore.getState().saveAsTemplate(t);
+    expect(saved.name).toBe('Cafe');
+  });
+
+  it('applyTemplate returns the template by id', async () => {
+    const t = { ...baseTx(-100), payee: 'Gym' };
+    await useTransactionStore.getState().add(t);
+    const saved = await useTransactionStore
+      .getState()
+      .saveAsTemplate(t, 'Gym pass');
+    expect(useTransactionStore.getState().applyTemplate(saved.id)?.name).toBe(
+      'Gym pass',
+    );
+    expect(
+      useTransactionStore.getState().applyTemplate('missing'),
+    ).toBeUndefined();
+  });
+
+  it('listTemplates returns the in-memory templates', async () => {
+    const t = { ...baseTx(-100), payee: 'P' };
+    await useTransactionStore.getState().add(t);
+    await useTransactionStore.getState().saveAsTemplate(t, 'A');
+    await useTransactionStore.getState().saveAsTemplate(t, 'B');
+    expect(
+      useTransactionStore
+        .getState()
+        .listTemplates()
+        .map((x) => x.name)
+        .sort(),
+    ).toEqual(['A', 'B']);
+  });
+
+  it('deleteTemplate removes a template', async () => {
+    const t = { ...baseTx(-100), payee: 'P' };
+    await useTransactionStore.getState().add(t);
+    const saved = await useTransactionStore.getState().saveAsTemplate(t, 'X');
+    await useTransactionStore.getState().deleteTemplate(saved.id);
+    expect(useTransactionStore.getState().templates).toEqual([]);
+    expect(await repos.transactionTemplates.get(saved.id)).toBeUndefined();
+  });
+
+  it('saveAsTemplate throws before the store is initialized', async () => {
+    resetStores();
+    await expect(
+      useTransactionStore.getState().saveAsTemplate(baseTx()),
+    ).rejects.toThrow(/not initialized/);
+  });
+
+  it('reset clears filter, search, and templates', async () => {
+    const t = { ...baseTx(-100), payee: 'P' };
+    await useTransactionStore.getState().add(t);
+    await useTransactionStore.getState().saveAsTemplate(t, 'T');
+    useTransactionStore.getState().setSearch('p');
+    useTransactionStore.getState().setFilter({ cleared: true });
+    resetStores();
+    const s = useTransactionStore.getState();
+    expect(s.items).toEqual([]);
+    expect(s.templates).toEqual([]);
+    expect(s.filter).toEqual({});
+    expect(s.search).toBe('');
   });
 });

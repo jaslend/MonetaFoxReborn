@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -16,6 +16,14 @@ import { useAuthStore } from '@/stores/authStore';
 
 import { AccountsPage } from './AccountsPage';
 
+// PBKDF2 is the suite's slowest single op; the AES key is a pure function of
+// (passphrase, salt) with no state, so derive it once per file and reuse it.
+// Per-test isolation comes from the fresh DB created in beforeEach.
+let key: CryptoKey;
+beforeAll(async () => {
+  key = await deriveKey({ mode: 'advanced', passphrase: 'pp', salt: 's' });
+});
+
 let db: MonetaFoxDB;
 let repos: Repositories;
 
@@ -23,11 +31,6 @@ beforeEach(async () => {
   db = new MonetaFoxDB(
     'test-accounts-page-' + Math.random().toString(36).slice(2),
   );
-  const key = await deriveKey({
-    mode: 'advanced',
-    passphrase: 'pp',
-    salt: 's',
-  });
   repos = createRepositories(db, key);
   resetStores();
   useAuthStore.setState({ mode: 'advanced', isAuthenticated: true });
