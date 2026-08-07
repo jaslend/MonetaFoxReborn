@@ -10,6 +10,7 @@ import { InvestmentsPage } from '@/pages/InvestmentsPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ReportsPage } from '@/pages/ReportsPage';
+import { ScheduledPage } from '@/pages/ScheduledPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { TransactionsPage } from '@/pages/TransactionsPage';
 
@@ -40,6 +41,7 @@ export function AppRoutes() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="investments" element={<InvestmentsPage />} />
           <Route path="bills" element={<BillsPage />} />
+          <Route path="scheduled" element={<ScheduledPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>

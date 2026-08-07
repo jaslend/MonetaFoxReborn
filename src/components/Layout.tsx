@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/reports', label: 'Reports' },
   { to: '/investments', label: 'Investments' },
   { to: '/bills', label: 'Bills' },
+  { to: '/scheduled', label: 'Scheduled' },
   { to: '/settings', label: 'Settings' },
 ];
 
