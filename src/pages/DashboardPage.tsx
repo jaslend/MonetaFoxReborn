@@ -44,6 +44,8 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useTransactionStore } from '@/stores/transactionStore';
 
 import { NetWorthSparkline } from '@/components/dashboard/NetWorthSparkline';
+import { GettingStarted } from '@/components/onboarding/GettingStarted';
+import { useSampleData } from '@/components/onboarding/useSampleData';
 
 /** Number of recent transactions to surface on the dashboard. */
 const RECENT_LIMIT = 7;
@@ -100,6 +102,8 @@ export function DashboardPage() {
   const holdings = useInvestmentStore((s) => s.holdings);
   const prices = useInvestmentStore((s) => s.prices);
   const settings = useSettingsStore((s) => s.items[0]);
+
+  const sample = useSampleData();
 
   const baseCurrency = settings?.baseCurrency ?? '';
   const rates = useMemo(() => settings?.rates ?? {}, [settings]);
@@ -190,6 +194,15 @@ export function DashboardPage() {
           and upcoming bills.
         </p>
       </div>
+
+      {/* First-run onboarding: when the vault is empty (no accounts yet),
+          show a getting-started guide instead of the empty dashboard. */}
+      {accounts.length === 0 ? (
+        <GettingStarted
+          onLoadSample={() => void sample.loadSample()}
+          loading={sample.loading}
+        />
+      ) : null}
 
       {/* Net worth + sparkline */}
       <Card>

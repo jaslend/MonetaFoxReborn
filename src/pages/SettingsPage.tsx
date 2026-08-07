@@ -18,6 +18,7 @@ import { CurrencySelect } from '@/components/currency/CurrencySelect';
 import { FxRateEditor } from '@/components/currency/FxRateEditor';
 import { DataExportCard } from '@/components/export/DataExportCard';
 import { SyncSettingsCard } from '@/components/sync/SyncSettingsCard';
+import { useSampleData } from '@/components/onboarding/useSampleData';
 import { useAccountStore } from '@/stores/accountStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTransactionStore } from '@/stores/transactionStore';
@@ -41,6 +42,8 @@ export function SettingsPage() {
   const baseCurrency = settings?.baseCurrency ?? '';
   const rates = settings?.rates ?? {};
   const locked = accountCount > 0 || txnCount > 0;
+
+  const sample = useSampleData();
 
   const [pendingBase, setPendingBase] = useState(baseCurrency);
   const [baseError, setBaseError] = useState<string | null>(null);
@@ -144,6 +147,45 @@ export function SettingsPage() {
       </Card>
 
       <DataExportCard />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Sample data</CardTitle>
+          <CardDescription>
+            Load a couple of months of realistic, clearly-marked sample
+            transactions, accounts, categories, and budgets to explore the app
+            without entering anything. Sample records are tagged with the marker{' '}
+            <code className="font-mono">sample</code> and can be removed here
+            without touching your real data.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {sample.error ? (
+            <p className="text-destructive text-sm" role="alert">
+              {sample.error}
+            </p>
+          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Button
+              size="sm"
+              onClick={() => void sample.loadSample()}
+              disabled={sample.loading}
+              data-testid="settings-load-sample"
+            >
+              {sample.loading ? 'Loading…' : 'Load sample data'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void sample.clearSample()}
+              disabled={sample.loading}
+              data-testid="settings-clear-sample"
+            >
+              Clear sample data
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <SyncSettingsCard />
 
