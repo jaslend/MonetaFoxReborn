@@ -47,8 +47,11 @@ jobs:
       - name: Verify PWA artifacts
         run: |
           test -f dist/manifest.webmanifest
-          test -f dist/registerSW.js
-          grep -q "serviceWorker" dist/sw.js
+          # The registration script references the service worker API...
+          grep -q "serviceWorker" dist/registerSW.js
+          # ...and vite-plugin-pwa emits a non-empty workbox service worker.
+          test -s dist/sw.js
+          grep -qE "workbox|precache" dist/sw.js
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
