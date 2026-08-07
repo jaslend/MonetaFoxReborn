@@ -20,6 +20,7 @@ import { useCategoryStore } from './categoryStore';
 import { useBudgetStore } from './budgetStore';
 import { useSettingsStore } from './settingsStore';
 import { useScheduledStore } from './scheduledStore';
+import { useInvestmentStore } from './investmentStore';
 
 export { useAccountStore } from './accountStore';
 export { useTransactionStore } from './transactionStore';
@@ -27,6 +28,7 @@ export { useCategoryStore } from './categoryStore';
 export { useBudgetStore } from './budgetStore';
 export { useSettingsStore } from './settingsStore';
 export { useScheduledStore } from './scheduledStore';
+export { useInvestmentStore } from './investmentStore';
 export { useUiStore } from './uiStore';
 export { useAuthStore } from './authStore';
 export type { AuthState } from './authStore';
@@ -41,6 +43,7 @@ export async function initializeStores(repos: Repositories): Promise<void> {
     useBudgetStore.getState().initialize(repos),
     useSettingsStore.getState().initialize(repos),
     useScheduledStore.getState().initialize(repos),
+    useInvestmentStore.getState().initialize(repos),
   ]);
 }
 
@@ -52,4 +55,5 @@ export function resetStores(): void {
   useBudgetStore.getState().reset();
   useSettingsStore.getState().reset();
   useScheduledStore.getState().reset();
+  useInvestmentStore.getState().reset();
 }
