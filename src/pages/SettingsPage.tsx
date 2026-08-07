@@ -16,6 +16,7 @@ import {
 import { DeleteAccountDialog } from '@/components/DeleteAccountDialog';
 import { CurrencySelect } from '@/components/currency/CurrencySelect';
 import { FxRateEditor } from '@/components/currency/FxRateEditor';
+import { DataExportCard } from '@/components/export/DataExportCard';
 import { useAccountStore } from '@/stores/accountStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTransactionStore } from '@/stores/transactionStore';
@@ -140,6 +141,8 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <DataExportCard />
 
       <Card className="border-destructive/50">
         <CardHeader>
