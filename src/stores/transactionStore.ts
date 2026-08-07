@@ -126,6 +126,31 @@ function assertBalanced(item: Transaction): void {
 }
 
 /**
+ * Per-id in-flight update chain. Two concurrent `update` calls on the same row
+ * (e.g. toggling Cleared then Reconciled in quick succession) otherwise race:
+ * both read the original, both merge, and the second `put` clobbers the first.
+ * Chaining the second on the first's completion makes read-modify-write
+ * deterministic without changing serial-call semantics.
+ */
+const inflightUpdates = new Map<string, Promise<void>>();
+
+function chainUpdate(id: string, work: () => Promise<void>): Promise<void> {
+  const prev = inflightUpdates.get(id) ?? Promise.resolve();
+  const next = prev.then(work, work);
+  inflightUpdates.set(id, next);
+  // Drop the entry once settled so the map cannot grow unboundedly. Using
+  // `.then(cleanup, cleanup)` (not `.finally`) means this handler absorbs
+  // `next`'s rejection too — the caller of `update` observes it via the
+  // returned/awaited `next`, and this fire-and-forget cleanup never produces
+  // an unhandled rejection of its own.
+  const cleanup = () => {
+    if (inflightUpdates.get(id) === next) inflightUpdates.delete(id);
+  };
+  next.then(cleanup, cleanup);
+  return next;
+}
+
+/**
  * Derived selector: the visible transactions are the `items` filtered by
  * `filter` and matched against `search`. Both layers are the pure Phase 5b
  * functions; search is applied first (a substring superset) then the filter.
@@ -167,13 +192,15 @@ export const useTransactionStore = create<TransactionStoreState>(
     update: async (id, patch) => {
       const { repos } = get();
       if (!repos) throw notInit();
-      const table = select(repos);
-      const existing = await table.get(id);
-      if (!existing) throw new Error(`transaction ${id} not found`);
-      const merged: Transaction = { ...existing, ...patch, id };
-      assertBalanced(merged);
-      await table.put(merged);
-      await get().load();
+      await chainUpdate(id, async () => {
+        const table = select(repos);
+        const existing = await table.get(id);
+        if (!existing) throw new Error(`transaction ${id} not found`);
+        const merged: Transaction = { ...existing, ...patch, id };
+        assertBalanced(merged);
+        await table.put(merged);
+        await get().load();
+      });
     },
 
     remove: async (id) => {
