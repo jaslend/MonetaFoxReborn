@@ -1,0 +1,76 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Allow concurrent deploys to be cancelled mid-flight; only the latest push
+# to main should end up published.
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build for GitHub Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile=false
+
+      - name: Build (project base path)
+        # The repo is served at https://<user>.github.io/MonetaFoxReborn/, so
+        # the production build must emit asset URLs rooted under
+        # /MonetaFoxReborn/. vite-plugin-pwa derives the manifest scope /
+        # start_url / SW path from `base`, so the PWA installs correctly under
+        # the project path too.
+        env:
+          VITE_BASE_PATH: /MonetaFoxReborn/
+        run: corepack pnpm run build
+
+      - name: SPA fallback for deep-link refresh
+        # GitHub Pages serves 404.html for any unknown path. Copy the built
+        # index.html so a refresh on a client route (e.g. /transactions) boots
+        # the app and lets the client router restore the view.
+        run: cp dist/index.html dist/404.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

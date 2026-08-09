@@ -1,31 +1,21 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * Phase 0 smoke test: the app boots, the PWA shell loads, and the primary
- * interactive control works. Deeper flows arrive in later phases.
+ * Phase 0 smoke test (refreshed in Phase 13): the built app boots and the
+ * first-run Login / Setup screen is reachable. Deeper flows live in
+ * core-flow.spec.ts and sample-data.spec.ts.
  */
-test('app boots and the counter increments', async ({ page }) => {
+test('app boots to the first-run setup screen', async ({ page }) => {
   await page.goto('/');
 
-  await expect(
-    page.getByRole('heading', { name: /MonetaFox Reborn/i, level: 1 }),
-  ).toBeVisible();
+  // Unauthenticated users are redirected to /login by RequireAuth; on a fresh
+  // browser context (no IndexedDB vault) the auth store is in 'setup' status,
+  // so the SetupForm renders with a "Create vault" primary action.
+  await expect(page).toHaveURL(/\/login/);
 
-  const counter = page.getByRole('button', { name: /Count: 0/i });
-  await expect(counter).toBeVisible();
-  await counter.click();
-  await counter.click();
-  await expect(
-    page.getByRole('button', { name: /Count: 2/i }),
-  ).toBeVisible();
-});
+  await expect(page.getByText(/MonetaFox/i).first()).toBeVisible();
 
-test('theme toggle switches dark class on <html>', async ({ page }) => {
-  await page.goto('/');
-  const toggle = page.getByTestId('theme-toggle');
-  await expect(toggle).toBeVisible();
-  await toggle.click();
-  await expect(page.locator('html')).toHaveClass(/dark/);
-  await toggle.click();
-  await expect(page.locator('html')).not.toHaveClass(/dark/);
+  await expect(
+    page.getByRole('button', { name: /Create vault/i }),
+  ).toBeVisible();
 });
