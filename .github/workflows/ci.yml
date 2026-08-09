@@ -47,9 +47,9 @@ jobs:
       - name: Verify PWA artifacts
         run: |
           test -f dist/manifest.webmanifest
-          # The registration script references the service worker API...
-          grep -q "serviceWorker" dist/registerSW.js
-          # ...and vite-plugin-pwa emits a non-empty workbox service worker.
+          # vite-plugin-pwa emits a non-empty workbox service worker. (SW
+          # registration lives in the app bundle via virtual:pwa-register/react,
+          # so there is intentionally no standalone dist/registerSW.js.)
           test -s dist/sw.js
           grep -qE "workbox|precache" dist/sw.js
 
