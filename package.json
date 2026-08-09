@@ -58,7 +58,8 @@
     "typescript-eslint": "^8.26.1",
     "vite": "^6.2.2",
     "vite-plugin-pwa": "^1.0.0",
-    "vitest": "^3.0.9"
+    "vitest": "^3.0.9",
+    "workbox-window": "^7.4.1"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
