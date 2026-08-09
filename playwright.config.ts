@@ -1,7 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright smoke harness. A full e2e suite lands in Phase 13.
+ * Playwright harness for MonetaFox Reborn (Phase 13).
+ *
+ * The `webServer` builds the production bundle once and serves `dist/` via
+ * `vite preview`, so CI (and any local run with a browser installed) drives
+ * the real built app. GitHub Actions installs the browsers; this sandbox has
+ * none, so `pnpm run test:e2e` is only expected to run green in CI.
+ *
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
@@ -14,6 +20,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
   },
   projects: [
     {
@@ -22,9 +29,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'corepack pnpm preview',
+    // Build once, then serve dist/. `preview` stays alive for the suite.
+    command: 'corepack pnpm run build && corepack pnpm preview',
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 240_000,
   },
 });

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en" class="">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>MonetaFox Reborn</title>
+    <script>
+      // SPA fallback for GitHub Pages: when a deep link (e.g. /transactions)
+      // is refreshed, GH Pages would 404 because there is no static file at
+      // that path. GitHub Pages serves 404.html instead, so we use it to boot
+      // the same React app the index page boots — once it mounts, the client
+      // router reads window.location and renders the right route. (For the
+      // production build the deploy workflow overwrites dist/404.html with
+      // dist/index.html so the hashed asset references line up.)
+      (function () {
+        try {
+          var stored = localStorage.getItem('monetafox-theme');
+          var prefersDark = window.matchMedia(
+            '(prefers-color-scheme: dark)',
+          ).matches;
+          var theme = stored || (prefersDark ? 'dark' : 'light');
+          if (theme === 'dark') document.documentElement.classList.add('dark');
+        } catch (e) {
+          /* localStorage unavailable; default to light. */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
