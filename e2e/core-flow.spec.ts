@@ -44,7 +44,10 @@ test('first-run setup → create account → add transaction → see it', async 
   ).toBeVisible();
 
   // --- 2. Pick base currency (Accounts page first-run gate) ----------------
-  await page.getByRole('link', { name: 'Accounts' }).click();
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Accounts' })
+    .click();
   await expect(
     page.getByRole('heading', { name: /Accounts/i, level: 1 }),
   ).toBeVisible();
@@ -76,7 +79,10 @@ test('first-run setup → create account → add transaction → see it', async 
   await expect(page.getByText(ACCOUNT_NAME)).toBeVisible();
 
   // --- 4. Add a transaction against the new account ------------------------
-  await page.getByRole('link', { name: 'Transactions' }).click();
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Transactions' })
+    .click();
   await expect(
     page.getByRole('heading', { name: /Transactions/i, level: 1 }),
   ).toBeVisible();
@@ -105,7 +111,10 @@ test('first-run setup → create account → add transaction → see it', async 
   );
 
   // --- And on the Dashboard's recent-transactions widget -------------------
-  await page.getByRole('link', { name: 'Dashboard' }).click();
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Dashboard' })
+    .click();
   await expect(page.getByTestId('recent-transactions')).toBeVisible();
   await expect(
     page.getByTestId('recent-transactions').getByText(PAYEE),

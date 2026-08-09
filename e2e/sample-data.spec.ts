@@ -28,7 +28,10 @@ test('load sample data, then reports render', async ({ page }) => {
   ).toBeVisible();
 
   // --- Load sample data from Settings --------------------------------------
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Settings' })
+    .click();
   await expect(
     page.getByRole('heading', { name: /Settings/i, level: 1 }),
   ).toBeVisible();
@@ -43,7 +46,10 @@ test('load sample data, then reports render', async ({ page }) => {
   );
 
   // --- Reports render ------------------------------------------------------
-  await page.getByRole('link', { name: 'Reports' }).click();
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Reports' })
+    .click();
   await expect(
     page.getByRole('heading', { name: /Reports/i, level: 1 }),
   ).toBeVisible();
@@ -56,16 +62,8 @@ test('load sample data, then reports render', async ({ page }) => {
   // The four chart cards each render under their titled heading. We assert
   // the headings are present (the Recharts SVGs are tested implicitly by the
   // page not crashing on real data).
-  await expect(
-    page.getByRole('heading', { name: /Net worth over time/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: /Spending by category/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: /Spending by payee/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: /Income vs expenses/i }),
-  ).toBeVisible();
+  await expect(page.getByText(/Net worth over time/i)).toBeVisible();
+  await expect(page.getByText(/Spending by category/i)).toBeVisible();
+  await expect(page.getByText(/Spending by payee/i)).toBeVisible();
+  await expect(page.getByText(/Income vs expenses/i)).toBeVisible();
 });

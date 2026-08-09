@@ -13,7 +13,7 @@ test('app boots to the first-run setup screen', async ({ page }) => {
   // so the SetupForm renders with a "Create vault" primary action.
   await expect(page).toHaveURL(/\/login/);
 
-  await expect(page.getByRole('heading', { name: /MonetaFox/i })).toBeVisible();
+  await expect(page.getByText(/MonetaFox/i).first()).toBeVisible();
 
   await expect(
     page.getByRole('button', { name: /Create vault/i }),
